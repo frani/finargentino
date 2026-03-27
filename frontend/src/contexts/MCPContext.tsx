@@ -39,6 +39,8 @@ export const MCPProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   
   const [loadingEntities, setLoadingEntities] = useState(false);
   const [loadingMarket, setLoadingMarket] = useState(false);
+  const [hasFetchedEntities, setHasFetchedEntities] = useState(false);
+  const [hasFetchedMarket, setHasFetchedMarket] = useState(false);
 
   const callMCP = async (method: string, params: any = {}) => {
     const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -58,20 +60,25 @@ export const MCPProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const fetchEntities = useCallback(async () => {
-    if (entities.length > 0) return; // Simple cache
+    if (hasFetchedEntities || loadingEntities) return; 
     setLoadingEntities(true);
     try {
       const result = await callMCP('resources/list');
-      setEntities(result.resources || []);
+      const resources = result.resources || [];
+      setEntities(resources);
+      setHasFetchedEntities(true);
     } catch (e) {
-      console.error(e);
+      console.error("Error fetching entities:", e);
+      // Mark as fetched even on error to avoid looping, 
+      // or at least wait for a manual retry.
+      setHasFetchedEntities(true); 
     } finally {
       setLoadingEntities(false);
     }
-  }, [entities]);
+  }, [hasFetchedEntities, loadingEntities]);
 
   const fetchMarketData = useCallback(async () => {
-    if (marketData.length > 0) return; // Simple cache
+    if (hasFetchedMarket || loadingMarket) return;
     setLoadingMarket(true);
     try {
       const result = await callMCP('tools/call', { name: 'get_market_overview' });
@@ -79,12 +86,14 @@ export const MCPProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const data = JSON.parse(result.content[0].text);
         setMarketData(data.history || []);
       }
+      setHasFetchedMarket(true);
     } catch (e) {
-      console.error(e);
+      console.error("Error fetching market data:", e);
+      setHasFetchedMarket(true);
     } finally {
       setLoadingMarket(false);
     }
-  }, [marketData]);
+  }, [hasFetchedMarket, loadingMarket]);
 
   const fetchBalances = useCallback(async (id: string) => {
     if (balancesCache[id]) {
@@ -99,9 +108,12 @@ export const MCPProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setBalancesCache(prev => ({ ...prev, [id]: data }));
         return data;
       }
+      // Cache empty result to avoid re-fetching
+      setBalancesCache(prev => ({ ...prev, [id]: [] }));
       return [];
     } catch (e) {
-      console.error(e);
+      console.error("Error fetching balances for:", id, e);
+      setBalancesCache(prev => ({ ...prev, [id]: [] }));
       return [];
     }
   }, [balancesCache]);
