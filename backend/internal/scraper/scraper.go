@@ -133,6 +133,16 @@ func ScrapeEntityBalance(entity BCRAEntity) ([]EntityBalance, error) {
 		})
 
 		if label != "" && len(vals) > 0 {
+			// Filter out audit report and meta-info rows that are not relevant for financial analysis
+			upperLabel := strings.ToUpper(label)
+			if strings.Contains(upperLabel, "FAVORABLE") || 
+			   strings.Contains(upperLabel, "SALVEDAD") || 
+			   strings.Contains(upperLabel, "CIERRE DE EJERCICIO") ||
+			   strings.Contains(upperLabel, "ABSTENCION") ||
+			   strings.Contains(upperLabel, "ADVERSA") ||
+			   strings.Contains(upperLabel, "ENFASIS") {
+				return
+			}
 			rows = append(rows, rowInfo{Label: label, Indentation: indent, Values: vals})
 		}
 	})
