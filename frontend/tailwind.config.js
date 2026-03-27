@@ -11,7 +11,7 @@ export default {
         'retro-blue': '#000080', // Title bar blue
         'retro-pink': '#ff00ff', // Accent pink
         'retro-yellow': '#ffff00', // Warning yellow
-        'retro-green': '#00ff00', // Success green
+        'retro-green': '#4f954fff', // Success green
         'pastel-pink': '#fbcfe8',
         'pastel-yellow': '#fef08a',
         'pastel-blue': '#bfdbfe',
