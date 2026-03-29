@@ -78,7 +78,7 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ data, topEntitie
           {[
             { label: "Activo Total Sistema", val: formatCurrency(latest.total_assets), color: "text-retro-blue" },
             { label: "Patrimonio Neto Total", val: formatCurrency(latest.total_net_worth), color: "text-retro-green" },
-            { label: "Solvencia Promedio", val: latest.avg_solvency.toFixed(2) + "%", color: "text-purple-700" },
+            { label: "Solvencia Promedio", val: latest.avg_solvency.toFixed(1) + "%", color: "text-purple-700" },
             { label: "Entidades Registradas", val: latest.entity_count, color: "text-black" }
           ].map((s, i) => (
             <div key={i} className="bg-white p-3 border-2 border-black shadow-button flex flex-col items-center">
@@ -122,8 +122,8 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ data, topEntitie
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="periodo" />
-                <YAxis unit="%" domain={['auto', 'auto']} />
-                <Tooltip />
+                <YAxis unit="%" domain={[0, 'auto']} tickFormatter={(val) => `${val.toFixed(1)}%`} />
+                <Tooltip formatter={(val: number) => [`${val.toFixed(2)}%`, "Solvencia"]} />
                 <Legend />
                 <Line type="monotone" dataKey="avg_solvency" stroke="#7e22ce" strokeWidth={3} name="Solvencia Promedio (%)" dot={{ r: 4 }} />
               </LineChart>
