@@ -174,10 +174,7 @@ export const EntityAnalysis: React.FC<EntityAnalysisProps> = ({ balances }) => {
     }
 
     const fixSpaced = (s: string) => {
-      const spaces = (s.match(/ /g) || []).length;
-      if (spaces > 0 && spaces >= (s.length - spaces - 1)) {
-        return s.replace(/\s+/g, '');
-      }
+      // Try splitting by double spaces first (multiple spaced words)
       if (s.includes("  ")) {
         return s.split(/\s{2,}/).map(word => {
           const wSpaces = (word.match(/ /g) || []).length;
@@ -187,10 +184,35 @@ export const EntityAnalysis: React.FC<EntityAnalysisProps> = ({ balances }) => {
           return word;
         }).join(" ");
       }
+
+      const spaces = (s.match(/ /g) || []).length;
+      if (spaces > 0 && spaces >= (s.length - spaces - 1)) {
+        return s.replace(/\s+/g, '');
+      }
       return s;
     };
 
-    return fixSpaced(clean);
+    let result = fixSpaced(clean);
+
+    // Specific corrections for known mangled financial labels
+    const check = result.replace(/[\.\s\-]/g, '').toUpperCase();
+    
+    if (check.includes("RDOSINTEGRALESACUM") && check.includes("PERIODO")) {
+      return "RDOS. INTEGRALES ACUM. DEL PERIODO";
+    }
+    
+    if (check === "PATRIMONIONETO" || check === "PATIMONIONETO") {
+      return "PATRIMONIO NETO";
+    }
+
+    const corrections: Record<string, string> = {
+      "RESULTADONETO": "RESULTADO NETO",
+      "TOTALDELACTIVO": "TOTAL DEL ACTIVO",
+      "TOTALDELPASIVO": "TOTAL DEL PASIVO",
+      "MARGENORDINARIO": "MARGEN ORDINARIO",
+    };
+
+    return corrections[result] || result;
   };
 
   const allRows: { originalLabel: string; displayLabel: string; indentation: number }[] = [];
