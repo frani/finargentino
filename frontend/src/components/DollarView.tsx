@@ -151,7 +151,7 @@ export function DollarView() {
         <div className="flex items-center gap-2">
           <DollarSign className="w-5 h-5 text-retro-blue" />
           <span className="text-xs font-bold uppercase tracking-widest opacity-60">
-            Cotizaciones USD — datos via dolarapi.com → guardados en BD
+            Cotizaciones USD
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -163,10 +163,6 @@ export function DollarView() {
           )}
           <RetroButton onClick={fetchRates} disabled={loading || syncing} className="px-2 py-1 text-xs">
             <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-          </RetroButton>
-          <RetroButton onClick={syncAndRefresh} disabled={syncing || loading} className="px-2 py-1 text-xs flex items-center gap-1">
-            <DatabaseZap className={`w-3 h-3 ${syncing ? 'animate-pulse' : ''}`} />
-            <span>{syncing ? 'Sincronizando...' : 'Sync BD'}</span>
           </RetroButton>
         </div>
       </div>
@@ -216,14 +212,11 @@ export function DollarView() {
                   key={rate.ticker}
                   className={`window flex flex-col border-2 border-black shadow-button ${meta.bg} hover:translate-y-[-1px] transition-transform`}
                 >
-                  <div className="title-bar flex items-center justify-between shrink-0">
+                  <div className="p-1 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-1.5">
                       <span className="text-base">{meta.emoji}</span>
                       <span className="font-bold text-xs">{meta.nombre}</span>
                     </div>
-                    <span className="text-[8px] font-bold bg-black text-white px-1 py-0.5 tracking-wider">
-                      {meta.tag}
-                    </span>
                   </div>
 
                   <div className="window-content flex flex-col gap-2 p-3">
