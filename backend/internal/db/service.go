@@ -235,6 +235,85 @@ func (s *Service) GetLastSyncDate(ctx context.Context) (time.Time, error) {
 	return lastSync.Time, nil
 }
 
+// FXRateRow represents a single row in the fx_rates table.
+type FXRateRow struct {
+	Ticker    string    `json:"ticker"`
+	Side      string    `json:"side"`
+	Value     float64   `json:"value"`
+	SourceTS  time.Time `json:"source_ts"`
+	FetchedAt time.Time `json:"fetched_at"`
+}
+
+// SaveFXRates upserts a batch of FX rate rows.
+// Duplicate snapshots (ticker+side+source_ts) are silently ignored.
+func (s *Service) SaveFXRates(ctx context.Context, rows []FXRateRow) error {
+	query := `
+		INSERT INTO fx_rates (ticker, side, value, source_ts)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (ticker, side, source_ts) DO NOTHING
+	`
+	for _, r := range rows {
+		if _, err := s.DB.ExecContext(ctx, query, r.Ticker, r.Side, r.Value, r.SourceTS); err != nil {
+			return fmt.Errorf("SaveFXRates %s/%s: %w", r.Ticker, r.Side, err)
+		}
+	}
+	return nil
+}
+
+// GetLatestFXRates returns the most recent compra+venta for each ticker.
+func (s *Service) GetLatestFXRates(ctx context.Context) ([]FXRateRow, error) {
+	query := `
+		SELECT DISTINCT ON (ticker, side)
+			ticker, side, value, source_ts, fetched_at
+		FROM fx_rates
+		ORDER BY ticker, side, source_ts DESC
+	`
+	rows, err := s.DB.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []FXRateRow
+	for rows.Next() {
+		var r FXRateRow
+		if err := rows.Scan(&r.Ticker, &r.Side, &r.Value, &r.SourceTS, &r.FetchedAt); err != nil {
+			return nil, err
+		}
+		result = append(result, r)
+	}
+	return result, nil
+}
+
+// GetFXRateHistory returns the last N days of snapshots for a given ticker.
+func (s *Service) GetFXRateHistory(ctx context.Context, ticker string, days int) ([]FXRateRow, error) {
+	if days <= 0 {
+		days = 30
+	}
+	query := `
+		SELECT ticker, side, value, source_ts, fetched_at
+		FROM fx_rates
+		WHERE ticker = $1
+		  AND source_ts >= NOW() - ($2 || ' days')::interval
+		ORDER BY source_ts ASC, side ASC
+	`
+	rows, err := s.DB.QueryContext(ctx, query, ticker, days)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []FXRateRow
+	for rows.Next() {
+		var r FXRateRow
+		if err := rows.Scan(&r.Ticker, &r.Side, &r.Value, &r.SourceTS, &r.FetchedAt); err != nil {
+			return nil, err
+		}
+		result = append(result, r)
+	}
+	return result, nil
+}
+
 func atoi(s string) int {
 	var i int
 	fmt.Sscanf(s, "%d", &i)

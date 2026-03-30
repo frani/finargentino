@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, NavLink, useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useMCP } from './hooks/useMCP';
 import { Window, RetroButton } from './components/RetroUI';
-import { RefreshCw, LayoutGrid, Globe, ChevronRight, Search, Columns, Menu, X } from 'lucide-react';
+import { RefreshCw, LayoutGrid, Globe, ChevronRight, Search, Columns, Menu, X, DollarSign } from 'lucide-react';
 import { EntityAnalysis } from './components/EntityAnalysis';
 import { MarketOverview } from './components/MarketOverview';
 import { ComparativeTable } from './components/ComparativeTable';
+import { DollarView } from './components/DollarView';
 import { useMCPContext } from './contexts/MCPContext';
 
 function App() {
@@ -99,7 +100,8 @@ function App() {
               {[
                 { to: "/general", icon: Globe, label: "General" },
                 { to: "/entidades", icon: LayoutGrid, label: "Entidades", end: true },
-                { to: "/comparativa", icon: Columns, label: "Tabla Comparativa" }
+                { to: "/comparativa", icon: Columns, label: "Tabla Comparativa" },
+                { to: "/dolar", icon: DollarSign, label: "Cotización Dólar" }
               ].map(link => (
                 <NavLink 
                   key={link.to}
@@ -231,6 +233,20 @@ function App() {
               className="bg-pastel-pink h-full"
             >
               <ComparativeTable />
+            </Window>
+          } />
+
+          <Route path="/dolar" element={
+            <Window
+              title={
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-4 h-4" />
+                  <span>Cotización del Dólar en Argentina</span>
+                </div>
+              }
+              className="bg-pastel-yellow h-full"
+            >
+              <DollarView />
             </Window>
           } />
 

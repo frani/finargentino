@@ -209,7 +209,51 @@ func (s *Server) handleToolsCall(ctx context.Context, params json.RawMessage) (i
 		}, nil
 	}
 
+	if p.Name == "sync_fx_rates" {
+		go s.syncFXRates()
+		return map[string]interface{}{
+			"content": []map[string]interface{}{
+				{"type": "text", "text": "Sincronización de FX iniciada en segundo plano."},
+			},
+		}, nil
+	}
+
+	if p.Name == "get_fx_rates" {
+		rates, err := s.Service.GetLatestFXRates(ctx)
+		if err != nil {
+			return nil, err
+		}
+		ratesJSON, _ := json.Marshal(rates)
+		return map[string]interface{}{
+			"content": []map[string]interface{}{
+				{"type": "text", "text": string(ratesJSON)},
+			},
+		}, nil
+	}
+
+	if p.Name == "get_fx_history" {
+		var args struct {
+			Ticker string `json:"ticker"`
+			Days   int    `json:"days"`
+		}
+		json.Unmarshal(p.Arguments, &args)
+		if args.Ticker == "" {
+			args.Ticker = "ARS/USD"
+		}
+		history, err := s.Service.GetFXRateHistory(ctx, args.Ticker, args.Days)
+		if err != nil {
+			return nil, err
+		}
+		histJSON, _ := json.Marshal(history)
+		return map[string]interface{}{
+			"content": []map[string]interface{}{
+				{"type": "text", "text": string(histJSON)},
+			},
+		}, nil
+	}
+
 	return nil, fmt.Errorf("tool not found")
+
 }
 
 func (s *Server) syncData() {
@@ -294,3 +338,81 @@ func (s *Server) sendResult(w http.ResponseWriter, id interface{}, result interf
 		Result:  result,
 	})
 }
+
+// casaToTicker maps dolarapi.com "casa" values to our ticker convention.
+var casaToTicker = map[string]string{
+	"oficial":         "ARS/USD",
+	"blue":            "ARS_BLUE/USD",
+	"bolsa":           "ARS_MEP/USD",
+	"contadoconliqui": "ARS_CCL/USD",
+	"mayorista":       "ARS_MAYORISTA/USD",
+	"cripto":          "ARS_CRYPTO/USD",
+	"tarjeta":         "ARS_TARJETA/USD",
+}
+
+// dolarAPIResponse is the shape returned by https://dolarapi.com/v1/dolares
+type dolarAPIResponse struct {
+	Casa                string   `json:"casa"`
+	Nombre              string   `json:"nombre"`
+	Compra              *float64 `json:"compra"`
+	Venta               *float64 `json:"venta"`
+	FechaActualizacion  string   `json:"fechaActualizacion"`
+}
+
+func (s *Server) syncFXRates() {
+	logPrefix := "[SyncFX]"
+	fmt.Println(logPrefix, "Fetching FX rates from dolarapi.com...")
+
+	resp, err := http.Get("https://dolarapi.com/v1/dolares")
+	if err != nil {
+		fmt.Println(logPrefix, "HTTP error:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	var apiRates []dolarAPIResponse
+	if err := json.NewDecoder(resp.Body).Decode(&apiRates); err != nil {
+		fmt.Println(logPrefix, "Decode error:", err)
+		return
+	}
+
+	ctx := context.Background()
+	var rows []db.FXRateRow
+
+	for _, r := range apiRates {
+		ticker, ok := casaToTicker[r.Casa]
+		if !ok {
+			ticker = "ARS_" + r.Casa + "/USD"
+		}
+
+		// Parse source timestamp; fall back to now if malformed.
+		sourceTS, err := time.Parse(time.RFC3339, r.FechaActualizacion)
+		if err != nil {
+			sourceTS = time.Now().UTC()
+		}
+
+		if r.Compra != nil {
+			rows = append(rows, db.FXRateRow{
+				Ticker:   ticker,
+				Side:     "compra",
+				Value:    *r.Compra,
+				SourceTS: sourceTS,
+			})
+		}
+		if r.Venta != nil {
+			rows = append(rows, db.FXRateRow{
+				Ticker:   ticker,
+				Side:     "venta",
+				Value:    *r.Venta,
+				SourceTS: sourceTS,
+			})
+		}
+	}
+
+	if err := s.Service.SaveFXRates(ctx, rows); err != nil {
+		fmt.Println(logPrefix, "Save error:", err)
+		return
+	}
+	fmt.Println(logPrefix, "Saved", len(rows), "FX rate rows.")
+}
+
