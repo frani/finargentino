@@ -74,7 +74,7 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ data, topEntitie
           <Globe className="w-4 h-4" />
           <span>Resumen Macro - Sistema Financiero Argentino ({latest.month}/{latest.year})</span>
         </div>
-        <div className="p-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: "Activo Total Sistema", val: formatCurrency(latest.total_assets), color: "text-retro-blue" },
             { label: "Patrimonio Neto Total", val: formatCurrency(latest.total_net_worth), color: "text-retro-green" },
@@ -89,7 +89,7 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ data, topEntitie
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* System Evolution */}
         <div className="window bg-white h-[400px]">
           <div className="title-bar !bg-retro-blue flex items-center gap-2">
@@ -132,7 +132,7 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ data, topEntitie
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top 10 Ranking */}
         <div className="window bg-white h-[450px]">
           <div className="title-bar !bg-black flex items-center gap-2">

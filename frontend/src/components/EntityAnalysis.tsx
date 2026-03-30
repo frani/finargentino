@@ -13,54 +13,14 @@ import {
   Sankey
 } from 'recharts';
 import { TrendingUp, BarChart3, Calculator } from 'lucide-react';
-
-interface LineItem {
-  label: string;
-  indentation: number;
-  value: number;
-}
-
-interface Balance {
-  entity_code: string;
-  entity_name: string;
-  year: number;
-  month: number;
-  assets: number;
-  liabilities: number;
-  net_worth: number;
-  line_items?: LineItem[];
-}
+import { calculateMetrics, Balance, LineItem, getValue } from '../utils/financialMetrics';
+import { RetroButton } from './RetroUI';
 
 interface EntityAnalysisProps {
   balances: Balance[];
 }
 
 export const EntityAnalysis: React.FC<EntityAnalysisProps> = ({ balances }) => {
-  // Helper to find value by label (normalized matching)
-  const getValue = (b: Balance, labels: string[]) => {
-    const normalize = (s: string) => 
-      s.normalize("NFD")
-       .replace(/[\u0300-\u036f]/g, "") // Remove accents
-       .replace(/[\s\.\-]+/g, '')
-       .toUpperCase();
-
-    const targetLabels = labels.map(normalize);
-
-    // 1. Try exact matches first across all items for all targets
-    const exactItem = b.line_items?.find(li => {
-      const normalizedItemLabel = normalize(li.label);
-      return targetLabels.some(tl => normalizedItemLabel === tl);
-    });
-    if (exactItem) return exactItem.value;
-
-    // 2. Fallback to include/contains matches
-    const partialItem = b.line_items?.find(li => {
-      const normalizedItemLabel = normalize(li.label);
-      return targetLabels.some(tl => normalizedItemLabel.includes(tl));
-    });
-    return partialItem?.value || 0;
-  };
-
   // Sort balances chronologically
   const sortedBalances = [...balances].sort((a, b) => {
     if (a.year !== b.year) return a.year - b.year;
@@ -72,107 +32,8 @@ export const EntityAnalysis: React.FC<EntityAnalysisProps> = ({ balances }) => {
 
   const selectedSankeyBalance = balances.find(b => `${b.year}-${b.month}` === sankeyDate) || latest;
 
-  const calculateMetrics = (b: Balance, prev?: Balance) => {
-    // Basic components
-    const assets = b.assets || getValue(b, ["ACTIVO", "TOTAL DEL ACTIVO"]);
-    const netWorth = b.net_worth || getValue(b, ["PATRIMONIONETO", "PATRIMONIO", "TOTAL DEL PATRIMONIO"]);
-    const liabilities = b.liabilities || (assets - netWorth);
-    const netIncome = getValue(b, ["RDOS. INTEGRALES ACUM. DEL PERIODO", "RESULTADO DEL EJERCICIO", "RESULTADO NETO", "RESULTADO DEL", "RESULTADO FINAL", "RDOS", "RESULTADO"]);
-    
-    // Asset Quality components
-    const loans = getValue(b, ["PRESTAMOS", "PRESTAMOS AL SECTOR", "TOTAL DE PRESTAMOS"]);
-    const nonPerforming = getValue(b, ["CARTERA IRREGULAR", "PRESTAMOS EN MORA", "EN MORA", "SITUACION 3", "SITUACION 4", "SITUACION 5"]);
-    const provisions = Math.abs(getValue(b, ["PREVISIONES", "PREVISIONES POR RIESGO"]));
-    const wholesaleLoans = getValue(b, ["SECTOR MAYORISTA", "PRESTAMOS AL SECTOR PUBLICO", "TITULOS PUBLICOS"]);
-
-    // Income/Expense components
-    const financialIncome = getValue(b, ["INGRESOS FINANCIEROS", "INGRESOS FINANCIEROS - POR INTERESES", "INGRESOS POR INTERESES", "INTERESES GANADOS"]);
-    const financialExpenses = Math.abs(getValue(b, ["EGRESOS FINANCIEROS", "EGRESOS FINANCIEROS - POR INTERESES", "EGRESOS POR INTERESES", "INTERESES PAGADOS"]));
-    const serviceIncome = getValue(b, ["INGRESOS POR SERVICIOS", "COMISIONES GANADAS"]);
-    const serviceExpenses = Math.abs(getValue(b, ["EGRESOS POR SERVICIOS", "COMISIONES PAGADAS"]));
-    
-    const badDebtExp = Math.abs(getValue(b, ["CARGO POR INCOBRABILIDAD", "CARGO POR RIESGO"]));
-    const adminExp = Math.abs(getValue(b, ["GASTOS DE ADMINISTRACION", "GASTOS ADMINISTRATIVOS", "ADMINISTRACION"]));
-    const personalExp = Math.abs(getValue(b, ["GASTOS DE PERSONAL", "GASTOS DE ESTRUCTURA", "PERSONAL"]));
-    
-    // Efficiency calculation components
-    const totalOperatingExpenses = adminExp + personalExp;
-    // Calc ordinary margin if not explicitly found
-    let ordinaryMargin = getValue(b, ["MARGEN ORDINARIO", "RESULTADO POR INTERMEDIACION", "RESULTADO BRUTO", "MARGEN DE INTERESES"]);
-    if (ordinaryMargin === 0) {
-      ordinaryMargin = (financialIncome - financialExpenses) + (serviceIncome - serviceExpenses);
-    }
-
-    // Asset Productivity
-    const securities = getValue(b, ["TITULOS VALORES", "INVERSIONES", "TITULOS PUBLICOS"]);
-    const productiveAssets = (loans || (assets * 0.7)) + securities;
-
-    // Liquidity components
-    const deposits = getValue(b, ["DEPOSITOS", "TOTAL DE DEPOSITOS"]);
-    const previousDeposits = prev ? getValue(prev, ["DEPOSITOS", "TOTAL DE DEPOSITOS"]) : 0;
-    const sightDeposits = getValue(b, ["DEPOSITOS A LA VISTA", "CUENTA CORRIENTE", "CAJA DE AHORRO"]);
-    const cash = getValue(b, ["EFECTIVO", "DISPONIBILIDADES", "CAJA Y BANCOS", "CAJA"]);
-
-    const amortizaciones = Math.abs(getValue(b, ["AMORTIZACIONES", "DEPRECIACION"]));
-
-    // Regulatory
-    const tier1Capital = getValue(b, ["CAPITAL BASICO", "RPC", "CAPITAL NIVEL 1", "RESPONSABILIDAD PATRIMONIAL"]);
-    const rwa = getValue(b, ["ACTIVOS PONDERADOS POR RIESGO", "APR", "COMPLEMENTARIO"]) || (assets * 0.8);
-
-    return {
-      // 1. Solvencia y Capital
-      tier1Ratio: rwa > 0 ? (tier1Capital / rwa) * 100 : 0,
-      leverage: netWorth > 0 ? (assets / netWorth) : 0,
-      solvencia: assets > 0 ? (netWorth / assets) * 100 : 0,
-
-      // 2. Calidad de Activos
-      morosidad: loans > 0 ? (nonPerforming / loans) * 100 : 0,
-      cobertura: nonPerforming > 0 ? (provisions / nonPerforming) * 100 : 0,
-      cargaIncob: (financialIncome > 0) ? (badDebtExp / financialIncome) * 100 : 0,
-      concentracion: loans > 0 ? (wholesaleLoans / loans) * 100 : (wholesaleLoans / assets) * 100,
-
-      // 3. Gestión y Eficiencia
-      eficiencia: ordinaryMargin > 0 ? (totalOperatingExpenses / ordinaryMargin) * 100 : 0,
-      gastosPersAct: assets > 0 ? ((personalExp || adminExp) / assets) * 100 : 0,
-      activosProdAct: assets > 0 ? (productiveAssets / assets) * 100 : 0,
-
-      // 4. Rentabilidad
-      nim: productiveAssets > 0 ? ((financialIncome - financialExpenses) / productiveAssets) * 100 : 0,
-      roe: netWorth > 0 ? (netIncome / netWorth) * 100 : 0,
-      roa: assets > 0 ? (netIncome / assets) * 100 : 0,
-
-      // 5. Liquidez
-      ltd: deposits > 0 ? (loans / deposits) * 100 : 0,
-      liqInmediata: sightDeposits > 0 ? (cash / sightDeposits) * 100 : (cash / (deposits * 0.4 || 1)) * 100,
-
-      // 6. Cash Flow / Otros
-      interestCoverage: financialExpenses > 0 ? ((netIncome + financialExpenses) / financialExpenses) : 0,
-      autoFinanciacion: assets > 0 ? ((netIncome + amortizaciones) / assets) * 100 : 0,
-      retencionDep: previousDeposits > 0 ? (deposits / previousDeposits) * 100 : 0,
-      
-      // Raw values for charts
-      assets,
-      netWorth,
-      liabilities,
-      periodo: `${b.month}/${b.year}`,
-      // Extra details for Sankey
-      finInc: financialIncome,
-      srvInc: serviceIncome,
-      othInc: getValue(b, ["OTROS INGRESOS OPERATIVOS", "OTROS INGRESOS"]),
-      finExp: financialExpenses,
-      srvExp: serviceExpenses,
-      admExp: adminExp,
-      perExp: personalExp,
-      provExp: badDebtExp,
-      taxExp: Math.abs(getValue(b, ["IMPUESTO A LAS GANANCIAS", "IMPUESTOS"])),
-      othExp: Math.abs(getValue(b, ["OTROS EGRESOS OPERATIVOS", "OTROS EGRESOS"])),
-      amortExp: amortizaciones,
-      netInc: netIncome
-    };
-  };
-
-  const processedData = sortedBalances.map((b, i) => calculateMetrics(b, i > 0 ? sortedBalances[i-1] : undefined));
-  const current = processedData[processedData.length - 1];
+  const currentProcessedData = sortedBalances.map((b, i) => calculateMetrics(b, i > 0 ? sortedBalances[i-1] : undefined));
+  const current = currentProcessedData[currentProcessedData.length - 1];
 
   const formatCurrency = (val: number) => {
     if (val === 0 || val === undefined) return "-";
@@ -378,6 +239,14 @@ export const EntityAnalysis: React.FC<EntityAnalysisProps> = ({ balances }) => {
   };
 
   const sankeyData = getSankeyData();
+  
+  // Responsive values
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const sankeyMargin = isMobile 
+    ? { top: 20, right: 100, bottom: 20, left: 10 } 
+    : { top: 40, right: 180, bottom: 40, left: 10 };
+  const sankeyHeight = isMobile ? "h-[450px]" : "h-[600px]";
+  const sankeyNodePadding = isMobile ? 30 : 60;
 
   if (!latest) return <div className="p-4 italic text-center text-retro-blue">No hay datos disponibles.</div>;
 
@@ -403,7 +272,7 @@ export const EntityAnalysis: React.FC<EntityAnalysisProps> = ({ balances }) => {
         {/* 3. Gestión y Eficiencia */}
         <RatioBox title="Gestión y Eficiencia" color="bg-pastel-yellow" headerColor="!bg-pastel-yellow-dark">
           <RatioItem label="Eficiencia" value={`${current.eficiencia.toFixed(1)}%`} desc="Cost-to-Income" />
-          <RatioItem label="Gastos Personal/Act" value={`${current.gastosPersAct.toFixed(2)}%`} desc="Carga Humana" />
+          <RatioItem label="Gastos Administrativos/Act" value={`${current.gastosPersAct.toFixed(2)}%`} desc="Carga Humana" />
           <RatioItem label="Activos Prod/Act" value={`${current.activosProdAct.toFixed(1)}%`} desc="Generan Interés" />
         </RatioBox>
 
@@ -428,7 +297,7 @@ export const EntityAnalysis: React.FC<EntityAnalysisProps> = ({ balances }) => {
         </RatioBox>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div className="window bg-white h-[350px]">
           <div className="title-bar !bg-retro-blue flex items-center gap-2">
             <TrendingUp className="w-4 h-4" />
@@ -436,7 +305,7 @@ export const EntityAnalysis: React.FC<EntityAnalysisProps> = ({ balances }) => {
           </div>
           <div className="p-4 h-full pb-12">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={processedData}>
+              <AreaChart data={currentProcessedData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="periodo" />
                 <YAxis tickFormatter={(val) => `${(val / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 0 })} M`} />
@@ -457,7 +326,7 @@ export const EntityAnalysis: React.FC<EntityAnalysisProps> = ({ balances }) => {
           </div>
           <div className="p-4 h-full pb-12">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={processedData}>
+              <LineChart data={currentProcessedData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="periodo" />
                 <YAxis unit="%" />
@@ -493,14 +362,14 @@ export const EntityAnalysis: React.FC<EntityAnalysisProps> = ({ balances }) => {
           </div>
           <span className="text-[10px] font-mono opacity-60">VALORES EN PESOS</span>
         </div>
-        <div className="p-12 h-[600px] bg-white">
+        <div className={`p-4 md:p-12 ${sankeyHeight} bg-white relative`}>
           {sankeyData && sankeyData.links.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <Sankey
                 data={sankeyData}
                 nodeWidth={25}
-                nodePadding={60}
-                margin={{ top: 40, right: 180, bottom: 40, left: 10 }}
+                nodePadding={sankeyNodePadding}
+                margin={sankeyMargin}
                 link={(props: any) => {
                   const { sourceX, targetX, sourceY, targetY, linkWidth, payload } = props;
                   const linkColor = payload.color || "#cccccc";

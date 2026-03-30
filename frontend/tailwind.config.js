@@ -8,6 +8,7 @@ export default {
     extend: {
       colors: {
         'retro-bg': '#c0c0c0', // Windows 95 grey
+        'retro-bg-tint': '#a8bfc2', // Soft bluish/greenish grey (more noticeable)
         'retro-blue': '#000080', // Title bar blue
         'retro-pink': '#ff00ff', // Accent pink
         'retro-yellow': '#ffff00', // Warning yellow

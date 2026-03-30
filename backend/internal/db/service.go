@@ -113,6 +113,86 @@ func (s *Service) GetBalances(ctx context.Context, bcoCode string) ([]scraper.En
 	return balances, nil
 }
 
+func (s *Service) GetAvailablePeriods(ctx context.Context) ([]map[string]int, error) {
+	query := `
+		SELECT DISTINCT period_year, period_month
+		FROM financial_statements
+		ORDER BY period_year DESC, period_month DESC
+	`
+	rows, err := s.DB.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var periods []map[string]int
+	for rows.Next() {
+		var y, m int
+		if err := rows.Scan(&y, &m); err != nil {
+			return nil, err
+		}
+		periods = append(periods, map[string]int{"year": y, "month": m})
+	}
+	return periods, nil
+}
+
+func (s *Service) GetBalancesForPeriod(ctx context.Context, year, month int) ([]scraper.EntityBalance, error) {
+	query := `
+		SELECT e.bco_code, e.name, fs.period_year, fs.period_month, fs.assets, fs.liabilities, fs.net_worth, fs.details
+		FROM entities e
+		JOIN financial_statements fs ON e.id = fs.entity_id
+		WHERE fs.period_year = $1 AND fs.period_month = $2
+		ORDER BY fs.assets DESC
+	`
+	rows, err := s.DB.QueryContext(ctx, query, year, month)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var balances []scraper.EntityBalance
+	for rows.Next() {
+		var b scraper.EntityBalance
+		var detailsJSON []byte
+		if err := rows.Scan(&b.EntityCode, &b.EntityName, &b.Year, &b.Month, &b.Assets, &b.Liabilities, &b.NetWorth, &detailsJSON); err != nil {
+			return nil, err
+		}
+		if len(detailsJSON) > 0 {
+			json.Unmarshal(detailsJSON, &b.LineItems)
+		}
+		balances = append(balances, b)
+	}
+	return balances, nil
+}
+
+func (s *Service) GetLatestBalances(ctx context.Context) ([]scraper.EntityBalance, error) {
+	query := `
+		SELECT DISTINCT ON (e.id) e.bco_code, e.name, fs.period_year, fs.period_month, fs.assets, fs.liabilities, fs.net_worth, fs.details
+		FROM entities e
+		JOIN financial_statements fs ON e.id = fs.entity_id
+		ORDER BY e.id, fs.period_year DESC, fs.period_month DESC
+	`
+	rows, err := s.DB.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var balances []scraper.EntityBalance
+	for rows.Next() {
+		var b scraper.EntityBalance
+		var detailsJSON []byte
+		if err := rows.Scan(&b.EntityCode, &b.EntityName, &b.Year, &b.Month, &b.Assets, &b.Liabilities, &b.NetWorth, &detailsJSON); err != nil {
+			return nil, err
+		}
+		if len(detailsJSON) > 0 {
+			json.Unmarshal(detailsJSON, &b.LineItems)
+		}
+		balances = append(balances, b)
+	}
+	return balances, nil
+}
+
 func (s *Service) GetMarketOverview(ctx context.Context) (*scraper.MarketOverview, error) {
 	query := `
 		SELECT 

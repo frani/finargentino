@@ -30,6 +30,8 @@ interface MCPContextType {
   fetchBalances: (id: string) => Promise<Balance[]>;
   lastSyncDate: string | null;
   fetchLastSyncDate: () => Promise<void>;
+  recentlyViewed: { id: string; name: string }[];
+  addToRecentlyViewed: (id: string, name: string) => void;
 }
 
 const MCPContext = createContext<MCPContextType | undefined>(undefined);
@@ -44,6 +46,10 @@ export const MCPProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [hasFetchedEntities, setHasFetchedEntities] = useState(false);
   const [hasFetchedMarket, setHasFetchedMarket] = useState(false);
   const [lastSyncDate, setLastSyncDate] = useState<string | null>(null);
+  const [recentlyViewed, setRecentlyViewed] = useState<{ id: string; name: string }[]>(() => {
+    const saved = localStorage.getItem('recentlyViewedEntities');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const callMCP = async (method: string, params: any = {}) => {
     const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -133,6 +139,15 @@ export const MCPProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [balancesCache]);
 
+  const addToRecentlyViewed = useCallback((id: string, name: string) => {
+    setRecentlyViewed(prev => {
+      const filtered = prev.filter(e => e.id !== id);
+      const updated = [{ id, name }, ...filtered].slice(0, 6);
+      localStorage.setItem('recentlyViewedEntities', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   return (
     <MCPContext.Provider value={{
       entities,
@@ -144,7 +159,9 @@ export const MCPProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       fetchMarketData,
       fetchBalances,
       lastSyncDate,
-      fetchLastSyncDate
+      fetchLastSyncDate,
+      recentlyViewed,
+      addToRecentlyViewed
     }}>
       {children}
     </MCPContext.Provider>

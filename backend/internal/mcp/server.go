@@ -122,7 +122,8 @@ func (s *Server) handleResourcesRead(ctx context.Context, params json.RawMessage
 
 func (s *Server) handleToolsCall(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var p struct {
-		Name string `json:"name"`
+		Name      string          `json:"name"`
+		Arguments json.RawMessage `json:"arguments"`
 	}
 	if err := json.Unmarshal(params, &p); err != nil {
 		return nil, err
@@ -164,6 +165,46 @@ func (s *Server) handleToolsCall(ctx context.Context, params json.RawMessage) (i
 		return map[string]interface{}{
 			"content": []map[string]interface{}{
 				{"type": "text", "text": text},
+			},
+		}, nil
+	}
+
+	if p.Name == "get_available_periods" {
+		periods, err := s.Service.GetAvailablePeriods(ctx)
+		if err != nil {
+			return nil, err
+		}
+		periodsJSON, _ := json.Marshal(periods)
+		return map[string]interface{}{
+			"content": []map[string]interface{}{
+				{"type": "text", "text": string(periodsJSON)},
+			},
+		}, nil
+	}
+
+	if p.Name == "get_latest_balances" {
+		var balances []scraper.EntityBalance
+		var err error
+
+		var periodParams struct {
+			Year  int `json:"year"`
+			Month int `json:"month"`
+		}
+		json.Unmarshal(p.Arguments, &periodParams)
+
+		if periodParams.Year > 0 && periodParams.Month > 0 {
+			balances, err = s.Service.GetBalancesForPeriod(ctx, periodParams.Year, periodParams.Month)
+		} else {
+			balances, err = s.Service.GetLatestBalances(ctx)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+		balancesJSON, _ := json.Marshal(balances)
+		return map[string]interface{}{
+			"content": []map[string]interface{}{
+				{"type": "text", "text": string(balancesJSON)},
 			},
 		}, nil
 	}

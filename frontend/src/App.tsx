@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, NavLink, useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useMCP } from './hooks/useMCP';
 import { Window, RetroButton } from './components/RetroUI';
-import { RefreshCw, LayoutGrid, Globe, ChevronRight, Search } from 'lucide-react';
+import { RefreshCw, LayoutGrid, Globe, ChevronRight, Search, Columns, Menu, X } from 'lucide-react';
 import { EntityAnalysis } from './components/EntityAnalysis';
 import { MarketOverview } from './components/MarketOverview';
+import { ComparativeTable } from './components/ComparativeTable';
 import { useMCPContext } from './contexts/MCPContext';
 
 function App() {
@@ -17,10 +18,12 @@ function App() {
     fetchEntities, 
     fetchMarketData,
     lastSyncDate,
-    fetchLastSyncDate
+    fetchLastSyncDate,
+    recentlyViewed
   } = useMCPContext();
 
   const [entitySearchName, setEntitySearchName] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const syncData = async () => {
     try {
@@ -51,84 +54,100 @@ function App() {
   const globalLoading = loadingEntities || loadingMarket;
 
   const renderLayout = (children: React.ReactNode) => (
-    <div className="min-h-screen p-4 flex flex-col gap-4 font-sans text-black overflow-hidden h-screen">
+    <div className="min-h-screen p-2 md:p-4 flex flex-col gap-2 md:gap-4 font-sans text-black h-screen overflow-hidden bg-retro-bg-tint">
       {/* Top Menu */}
-      <div className="window py-1 px-2 flex justify-between items-center bg-retro-bg shrink-0">
-        <div className="flex gap-2 text-xs">
-          <RetroButton className="font-bold px-2">Inicio</RetroButton>
-          <div className="w-[1px] bg-gray-600 self-stretch mx-1 shadow-button" />
+      <div className="window py-1 px-2 flex justify-between items-center bg-retro-bg shrink-0 z-50">
+        <div className="flex gap-1 md:gap-2 text-xs items-center">
+          <button 
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="md:hidden p-1 border-2 border-black shadow-button bg-retro-bg active:shadow-button-pressed"
+          >
+            {sidebarOpen ? <X className="w-3 h-3" /> : <Menu className="w-3 h-3" />}
+          </button>
+          <RetroButton className="font-bold px-2 hidden sm:block">Inicio</RetroButton>
+          <div className="hidden sm:block w-[1px] bg-gray-600 self-stretch mx-1 shadow-button" />
           <RetroButton onClick={() => window.location.reload()} disabled={globalLoading} className="px-2">
             <RefreshCw className={`w-3 h-3 ${globalLoading ? 'animate-spin' : ''}`} />
           </RetroButton>
           <div className="flex items-center gap-2 border-l border-black/10 pl-2">
-            <RetroButton onClick={syncData} className="px-2" disabled={isSyncDisabled || globalLoading}>
-              Sincronizar BCRA
+            <RetroButton onClick={syncData} className="px-1 md:px-2 text-[10px] md:text-xs" disabled={isSyncDisabled || globalLoading}>
+              <span className="hidden xs:inline">Sincronizar BCRA</span>
+              <span className="xs:hidden">Sync</span>
             </RetroButton>
             {lastSyncDateObj && (
-              <span className="text-[10px] opacity-70">
-                Última sync: {lastSyncDateObj.toLocaleDateString()} {lastSyncDateObj.toLocaleTimeString()}
+              <span className="text-[10px] opacity-70 hidden lg:inline">
+                Última sync: {lastSyncDateObj.toLocaleDateString()}
               </span>
             )}
           </div>
         </div>
-        <div className="text-[10px] font-bold bg-pastel-yellow border-black border px-2 shadow-button">
-          FinArgentina v1.0.0
+        <div className="text-[9px] md:text-[10px] font-bold bg-pastel-yellow border-black border px-2 shadow-button truncate max-w-[120px] sm:max-w-none">
+          FinArgentina v0.3.0
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-12 gap-4 overflow-hidden">
-        {/* Sidebar */}
-        <div className="col-span-3 h-full overflow-y-auto">
-          <Window title="Explorador" className="bg-pastel-pink/50 h-full">
+      <div className="flex-1 flex flex-col md:grid md:grid-cols-12 gap-2 md:gap-4 overflow-hidden relative">
+        {/* Sidebar / Explorer */}
+        <div className={`
+          ${sidebarOpen ? 'flex' : 'hidden md:flex'} 
+          absolute md:relative z-40 inset-0 md:inset-auto 
+          md:col-span-3 h-full overflow-y-auto 
+          bg-retro-bg-tint/95 md:bg-transparent p-4 md:p-0
+        `}>
+          <Window title="Explorador" className="bg-pastel-pink/50 h-full w-full">
             <div className="flex flex-col gap-1">
-              <NavLink 
-                to="/mercado-general"
-                className={({isActive}) => `flex items-center gap-2 p-1 border border-transparent ${isActive ? 'bg-retro-blue text-white shadow-button' : 'hover:bg-retro-blue/20'}`}
-              >
-                <Globe className="w-4 h-4" />
-                <span className="font-bold text-sm">Mercado General</span>
-              </NavLink>
-              
-              <NavLink 
-                to="/entidades"
-                end
-                className={({isActive}) => `flex items-center gap-2 p-1 border border-transparent ${isActive ? 'bg-retro-blue text-white shadow-button' : 'hover:bg-retro-blue/20'}`}
-              >
-                <LayoutGrid className="w-4 h-4" />
-                <span className="font-bold text-sm">Ranking Entidades</span>
-              </NavLink>
+              {[
+                { to: "/general", icon: Globe, label: "General" },
+                { to: "/entidades", icon: LayoutGrid, label: "Entidades", end: true },
+                { to: "/comparativa", icon: Columns, label: "Tabla Comparativa" }
+              ].map(link => (
+                <NavLink 
+                  key={link.to}
+                  to={link.to}
+                  end={link.end}
+                  onClick={() => setSidebarOpen(false)}
+                  className={({isActive}) => `flex items-center gap-2 p-2 border border-transparent ${isActive ? 'bg-retro-blue text-white shadow-button' : 'hover:bg-retro-blue/20'}`}
+                >
+                  <link.icon className="w-4 h-4" />
+                  <span className="font-bold text-sm">{link.label}</span>
+                </NavLink>
+              ))}
 
               <div className="mt-4 border-t-2 border-black/5 pt-2 px-1">
-                <span className="text-[9px] uppercase font-bold opacity-50">Acceso Directo</span>
-                {entities.slice(0, 5).map(e => {
-                  const id = e.uri.split('/').pop();
-                  return (
-                    <NavLink
-                      key={e.uri}
-                      to={`/entidades/${id}`}
-                      className={({isActive}) => `flex items-center gap-2 p-1 text-[11px] truncate ${isActive ? 'bg-retro-green text-black border-black border' : 'hover:bg-retro-green/20'}`}
-                    >
-                      <ChevronRight className="w-3 h-3 shrink-0" />
-                      <span className="truncate">{e.name.replace('Balances de ', '')}</span>
-                    </NavLink>
-                  );
-                })}
+                <span className="text-[9px] uppercase font-bold opacity-50">Visto Recientemente</span>
+                <div className="flex flex-col gap-1 mt-1">
+                  {recentlyViewed.length > 0 ? (
+                    recentlyViewed.map(e => (
+                      <NavLink
+                        key={e.id}
+                        to={`/entidades/${e.id}`}
+                        onClick={() => setSidebarOpen(false)}
+                        className={({isActive}) => `flex items-center gap-2 p-1 text-[11px] truncate ${isActive ? 'bg-retro-green text-black border-black border' : 'hover:bg-retro-green/20'}`}
+                      >
+                        <ChevronRight className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{e.name}</span>
+                      </NavLink>
+                    ))
+                  ) : (
+                    <div className="text-[10px] italic opacity-40 p-2">Ninguna entidad visitada</div>
+                  )}
+                </div>
               </div>
             </div>
           </Window>
         </div>
 
         {/* Content Area */}
-        <div className="col-span-9 h-full overflow-y-auto">
+        <div className="col-span-12 md:col-span-9 h-full overflow-y-auto">
           {children}
         </div>
       </div>
 
-      <div className="bg-retro-bg border-t-2 border-white shadow-button p-1 text-[10px] flex justify-between shrink-0">
-        <span>Sistema Financiero Argentino</span>
-        <div className="flex gap-4">
+      <div className="bg-retro-bg border-t-2 border-white shadow-button p-1 text-[9px] md:text-[10px] flex justify-between shrink-0">
+        <span className="truncate mr-2">Valores en ARS</span>
+        <div className="flex gap-2 md:gap-4 shrink-0">
           <span>{new Date().toLocaleDateString()}</span>
-          <span>{new Date().toLocaleTimeString()}</span>
+          <span className="hidden xs:inline">{new Date().toLocaleTimeString()}</span>
         </div>
       </div>
     </div>
@@ -138,8 +157,8 @@ function App() {
     <BrowserRouter>
       {renderLayout(
         <Routes>
-          <Route path="/" element={<Navigate to="/mercado-general" replace />} />
-          <Route path="/mercado-general" element={
+          <Route path="/" element={<Navigate to="/general" replace />} />
+          <Route path="/general" element={
             <Window title="Análisis Macroeconómico del Sistema" className="bg-pastel-yellow h-full">
               {loadingMarket ? (
                 <div className="p-10 text-center animate-pulse italic">Cargando datos maestros...</div>
@@ -200,6 +219,20 @@ function App() {
               </div>
             </Window>
           } />
+          
+          <Route path="/comparativa" element={
+            <Window 
+              title={
+                <div className="flex items-center gap-2">
+                  <Columns className="w-4 h-4" />
+                  <span>Tabla Comparativa de Entidades</span>
+                </div>
+              } 
+              className="bg-pastel-pink h-full"
+            >
+              <ComparativeTable />
+            </Window>
+          } />
 
           <Route path="/entidades/:id" element={<EntityDetailWrapper />} />
         </Routes>
@@ -211,13 +244,19 @@ function App() {
 // Wrapper to fetch entity data based on ID
 function EntityDetailWrapper() {
   const { id } = useParams<{ id: string }>();
-  const { entities, fetchBalances, balancesCache } = useMCPContext();
+  const { entities, fetchBalances, balancesCache, addToRecentlyViewed } = useMCPContext();
   const [localBalances, setLocalBalances] = useState<any[]>(balancesCache[id || ''] || []);
   const [loading, setLoading] = useState(!balancesCache[id || '']);
   const navigate = useNavigate();
 
   const entity = entities.find(e => e.uri.endsWith(`/${id}`));
   const entityName = entity?.name.replace('Balances de ', '') || `Entidad ${id}`;
+
+  useEffect(() => {
+    if (entityName && id && !entityName.startsWith('Entidad ')) {
+      addToRecentlyViewed(id, entityName);
+    }
+  }, [id, entityName, addToRecentlyViewed]);
 
   useEffect(() => {
     const fetch = async () => {

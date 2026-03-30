@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-retro-bg font-sans;
+    @apply bg-retro-bg-tint font-sans;
   }
 }
 
