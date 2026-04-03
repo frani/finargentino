@@ -58,3 +58,24 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_agro_prices_ticker_ts
 CREATE INDEX IF NOT EXISTS idx_agro_prices_ticker_ts
     ON agro_prices (ticker, source_ts DESC);
 
+-- Debtor summaries per entity and period
+CREATE TABLE IF NOT EXISTS debtor_summaries (
+    id SERIAL PRIMARY KEY,
+    entity_id INTEGER REFERENCES entities(id) ON DELETE CASCADE,
+    bco_code VARCHAR(10) NOT NULL, -- To easily link by bank code
+    period_date DATE NOT NULL,      -- Full date representating the period (e.g. YYYY-MM-01)
+    debtor_count INTEGER NOT NULL,
+    total_debt_amount NUMERIC(20, 2) NOT NULL,
+    debt_sit_1 NUMERIC(20, 2) DEFAULT 0,
+    debt_sit_2 NUMERIC(20, 2) DEFAULT 0,
+    debt_sit_3 NUMERIC(20, 2) DEFAULT 0,
+    debt_sit_4 NUMERIC(20, 2) DEFAULT 0,
+    debt_sit_5 NUMERIC(20, 2) DEFAULT 0,
+    debt_sit_11 NUMERIC(20, 2) DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(entity_id, period_date)
+);
+
+-- Index for period queries
+CREATE INDEX IF NOT EXISTS idx_debtor_summaries_period_date ON debtor_summaries(period_date);
+

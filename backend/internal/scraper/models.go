@@ -32,12 +32,20 @@ type LineItem struct {
 }
 
 type EntityBalance struct {
-	EntityCode  string     `json:"entity_code"`
-	EntityName  string     `json:"entity_name"`
-	Year        int        `json:"year"`
-	Month       int        `json:"month"`
-	Assets      float64    `json:"assets"`
-	Liabilities float64    `json:"liabilities"`
-	NetWorth    float64    `json:"net_worth"`
-	LineItems   []LineItem `json:"line_items"`
+	EntityCode      string     `json:"entity_code"`
+	EntityName      string     `json:"entity_name"`
+	Year            int        `json:"year"`
+	Month           int        `json:"month"`
+	Assets          float64    `json:"assets"`
+	Liabilities     float64    `json:"liabilities"`
+	NetWorth        float64    `json:"net_worth"`
+	DebtorsCount    int        `json:"debtors_count,omitempty"`
+	TotalDebtAmount float64    `json:"total_debt_amount,omitempty"`
+	DebtSit1        float64    `json:"debt_sit_1,omitempty"`
+	DebtSit2        float64    `json:"debt_sit_2,omitempty"`
+	DebtSit3        float64    `json:"debt_sit_3,omitempty"`
+	DebtSit4        float64    `json:"debt_sit_4,omitempty"`
+	DebtSit5        float64    `json:"debt_sit_5,omitempty"`
+	DebtSit11       float64    `json:"debt_sit_11,omitempty"`
+	LineItems       []LineItem `json:"line_items"`
 }

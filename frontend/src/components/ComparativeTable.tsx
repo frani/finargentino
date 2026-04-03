@@ -152,8 +152,12 @@ export const ComparativeTable: React.FC = () => {
     const col = AVAILABLE_COLUMNS.find(c => c.id === key);
     if (!col) return value;
 
-    if (key === 'assets' || key === 'netWorth' || key === 'netInc') {
+    if (key === 'assets' || key === 'netWorth' || key === 'netInc' || key === 'total_debt_amount' || key.startsWith('debt_sit_')) {
         return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', notation: 'compact' }).format(value);
+    }
+    
+    if (key === 'debtors_count') {
+        return new Intl.NumberFormat('es-AR').format(value);
     }
 
     if (typeof value === 'number') {

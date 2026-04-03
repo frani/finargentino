@@ -86,9 +86,14 @@ func (s *Service) GetEntities(ctx context.Context) ([]scraper.BCRAEntity, error)
 
 func (s *Service) GetBalances(ctx context.Context, bcoCode string) ([]scraper.EntityBalance, error) {
 	query := `
-		SELECT e.bco_code, e.name, fs.period_year, fs.period_month, fs.assets, fs.liabilities, fs.net_worth, fs.details
+		SELECT e.bco_code, e.name, fs.period_year, fs.period_month, fs.assets, fs.liabilities, fs.net_worth,
+		       COALESCE(ds.debtor_count, 0), COALESCE(ds.total_debt_amount, 0),
+		       COALESCE(ds.debt_sit_1, 0), COALESCE(ds.debt_sit_2, 0), COALESCE(ds.debt_sit_3, 0),
+		       COALESCE(ds.debt_sit_4, 0), COALESCE(ds.debt_sit_5, 0), COALESCE(ds.debt_sit_11, 0),
+		       fs.details
 		FROM financial_statements fs
 		JOIN entities e ON fs.entity_id = e.id
+		LEFT JOIN debtor_summaries ds ON e.id = ds.entity_id AND ds.period_date = MAKE_DATE(fs.period_year, fs.period_month, 1)
 		WHERE e.bco_code = $1
 		ORDER BY fs.period_year DESC, fs.period_month DESC
 	`
@@ -102,7 +107,12 @@ func (s *Service) GetBalances(ctx context.Context, bcoCode string) ([]scraper.En
 	for rows.Next() {
 		var b scraper.EntityBalance
 		var detailsJSON []byte
-		if err := rows.Scan(&b.EntityCode, &b.EntityName, &b.Year, &b.Month, &b.Assets, &b.Liabilities, &b.NetWorth, &detailsJSON); err != nil {
+		if err := rows.Scan(
+			&b.EntityCode, &b.EntityName, &b.Year, &b.Month, 
+			&b.Assets, &b.Liabilities, &b.NetWorth, 
+			&b.DebtorsCount, &b.TotalDebtAmount, &b.DebtSit1, &b.DebtSit2, &b.DebtSit3, &b.DebtSit4, &b.DebtSit5, &b.DebtSit11,
+			&detailsJSON,
+		); err != nil {
 			return nil, err
 		}
 		if len(detailsJSON) > 0 {
@@ -138,9 +148,14 @@ func (s *Service) GetAvailablePeriods(ctx context.Context) ([]map[string]int, er
 
 func (s *Service) GetBalancesForPeriod(ctx context.Context, year, month int) ([]scraper.EntityBalance, error) {
 	query := `
-		SELECT e.bco_code, e.name, fs.period_year, fs.period_month, fs.assets, fs.liabilities, fs.net_worth, fs.details
+		SELECT e.bco_code, e.name, fs.period_year, fs.period_month, fs.assets, fs.liabilities, fs.net_worth,
+		       COALESCE(ds.debtor_count, 0), COALESCE(ds.total_debt_amount, 0),
+		       COALESCE(ds.debt_sit_1, 0), COALESCE(ds.debt_sit_2, 0), COALESCE(ds.debt_sit_3, 0),
+		       COALESCE(ds.debt_sit_4, 0), COALESCE(ds.debt_sit_5, 0), COALESCE(ds.debt_sit_11, 0),
+		       fs.details
 		FROM entities e
 		JOIN financial_statements fs ON e.id = fs.entity_id
+		LEFT JOIN debtor_summaries ds ON e.id = ds.entity_id AND ds.period_date = MAKE_DATE(fs.period_year, fs.period_month, 1)
 		WHERE fs.period_year = $1 AND fs.period_month = $2
 		ORDER BY fs.assets DESC
 	`
@@ -154,7 +169,12 @@ func (s *Service) GetBalancesForPeriod(ctx context.Context, year, month int) ([]
 	for rows.Next() {
 		var b scraper.EntityBalance
 		var detailsJSON []byte
-		if err := rows.Scan(&b.EntityCode, &b.EntityName, &b.Year, &b.Month, &b.Assets, &b.Liabilities, &b.NetWorth, &detailsJSON); err != nil {
+		if err := rows.Scan(
+			&b.EntityCode, &b.EntityName, &b.Year, &b.Month, 
+			&b.Assets, &b.Liabilities, &b.NetWorth, 
+			&b.DebtorsCount, &b.TotalDebtAmount, &b.DebtSit1, &b.DebtSit2, &b.DebtSit3, &b.DebtSit4, &b.DebtSit5, &b.DebtSit11,
+			&detailsJSON,
+		); err != nil {
 			return nil, err
 		}
 		if len(detailsJSON) > 0 {
@@ -167,9 +187,14 @@ func (s *Service) GetBalancesForPeriod(ctx context.Context, year, month int) ([]
 
 func (s *Service) GetLatestBalances(ctx context.Context) ([]scraper.EntityBalance, error) {
 	query := `
-		SELECT DISTINCT ON (e.id) e.bco_code, e.name, fs.period_year, fs.period_month, fs.assets, fs.liabilities, fs.net_worth, fs.details
+		SELECT DISTINCT ON (e.id) e.bco_code, e.name, fs.period_year, fs.period_month, fs.assets, fs.liabilities, fs.net_worth,
+		       COALESCE(ds.debtor_count, 0), COALESCE(ds.total_debt_amount, 0),
+		       COALESCE(ds.debt_sit_1, 0), COALESCE(ds.debt_sit_2, 0), COALESCE(ds.debt_sit_3, 0),
+		       COALESCE(ds.debt_sit_4, 0), COALESCE(ds.debt_sit_5, 0), COALESCE(ds.debt_sit_11, 0),
+		       fs.details
 		FROM entities e
 		JOIN financial_statements fs ON e.id = fs.entity_id
+		LEFT JOIN debtor_summaries ds ON e.id = ds.entity_id AND ds.period_date = MAKE_DATE(fs.period_year, fs.period_month, 1)
 		ORDER BY e.id, fs.period_year DESC, fs.period_month DESC
 	`
 	rows, err := s.DB.QueryContext(ctx, query)
@@ -182,7 +207,12 @@ func (s *Service) GetLatestBalances(ctx context.Context) ([]scraper.EntityBalanc
 	for rows.Next() {
 		var b scraper.EntityBalance
 		var detailsJSON []byte
-		if err := rows.Scan(&b.EntityCode, &b.EntityName, &b.Year, &b.Month, &b.Assets, &b.Liabilities, &b.NetWorth, &detailsJSON); err != nil {
+		if err := rows.Scan(
+			&b.EntityCode, &b.EntityName, &b.Year, &b.Month, 
+			&b.Assets, &b.Liabilities, &b.NetWorth, 
+			&b.DebtorsCount, &b.TotalDebtAmount, &b.DebtSit1, &b.DebtSit2, &b.DebtSit3, &b.DebtSit4, &b.DebtSit5, &b.DebtSit11,
+			&detailsJSON,
+		); err != nil {
 			return nil, err
 		}
 		if len(detailsJSON) > 0 {

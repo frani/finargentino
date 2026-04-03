@@ -8,6 +8,7 @@ build/
 bin/
 frontend/dist/
 backend/bin/
+.bcra/
 
 # Environment variables
 .env

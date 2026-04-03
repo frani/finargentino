@@ -12,6 +12,14 @@ export interface Balance {
   assets: number;
   liabilities: number;
   net_worth: number;
+  debtors_count?: number;
+  total_debt_amount?: number;
+  debt_sit_1?: number;
+  debt_sit_2?: number;
+  debt_sit_3?: number;
+  debt_sit_4?: number;
+  debt_sit_5?: number;
+  debt_sit_11?: number;
   line_items?: LineItem[];
 }
 
@@ -124,6 +132,17 @@ export const calculateMetrics = (b: Balance, prev?: Balance) => {
     periodo: `${b.month}/${b.year}`,
     entity_name: b.entity_name,
     entity_code: b.entity_code,
+    
+    // Central de Deudores data
+    debtors_count: b.debtors_count || 0,
+    total_debt_amount: b.total_debt_amount || 0,
+    debt_sit_1: b.debt_sit_1 || 0,
+    debt_sit_2: b.debt_sit_2 || 0,
+    debt_sit_3: b.debt_sit_3 || 0,
+    debt_sit_4: b.debt_sit_4 || 0,
+    debt_sit_5: b.debt_sit_5 || 0,
+    debt_sit_11: b.debt_sit_11 || 0,
+    
     // Extra details for Sankey
     finInc: financialIncome,
     srvInc: serviceIncome,
@@ -156,4 +175,9 @@ export const AVAILABLE_COLUMNS = [
   { id: 'nim', label: 'NIM (%)', category: 'Rentabilidad' },
   { id: 'ltd', label: 'LTD (%)', category: 'Liquidez' },
   { id: 'liqInmediata', label: 'Liq. Inmediata (%)', category: 'Liquidez' },
+  { id: 'debtors_count', label: 'Cant. Deudores', category: 'Deudores (BCRA)' },
+  { id: 'total_debt_amount', label: 'Deuda Total', category: 'Deudores (BCRA)' },
+  { id: 'debt_sit_1', label: 'Sit 1 (Normal)', category: 'Deudores (BCRA)' },
+  { id: 'debt_sit_4', label: 'Sit 4 (Riesgo Alto)', category: 'Deudores (BCRA)' },
+  { id: 'debt_sit_5', label: 'Sit 5 (Irrecuperable)', category: 'Deudores (BCRA)' },
 ];

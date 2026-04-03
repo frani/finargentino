@@ -264,16 +264,19 @@ function EntityDetailWrapper() {
   return (
     <Window title={`Detalle: ${entityName}`} className="bg-pastel-blue h-full overflow-y-auto">
       <div className="flex flex-col gap-4">
-        <RetroButton onClick={() => navigate('/entidades')} className="w-fit font-bold text-xs">
-          ← Volver a Bancos
-        </RetroButton>
-        
         {loading ? (
           <div className="p-10 text-center animate-pulse italic text-retro-blue font-bold">
             Recuperando estados contables...
           </div>
         ) : localBalances.length > 0 ? (
-          <EntityAnalysis balances={localBalances} />
+          <EntityAnalysis 
+            balances={localBalances} 
+            headerContent={
+              <RetroButton onClick={() => navigate('/entidades')} className="w-fit font-bold text-xs">
+                ← Volver a Bancos
+              </RetroButton>
+            }
+          />
         ) : (
           <div className="p-10 text-center italic text-red-500 bg-white border-2 border-red-500 shadow-button">
             No se encontraron datos para la entidad {id}.

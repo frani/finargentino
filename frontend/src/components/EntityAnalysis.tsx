@@ -10,17 +10,21 @@ import {
   Area,
   LineChart,
   Line,
-  Sankey
+  Sankey,
+  PieChart,
+  Pie,
+  Cell
 } from 'recharts';
-import { TrendingUp, BarChart3, Calculator } from 'lucide-react';
+import { TrendingUp, BarChart3, Calculator, AlertTriangle } from 'lucide-react';
 import { calculateMetrics, Balance, LineItem, getValue } from '../utils/financialMetrics';
 import { RetroButton } from './RetroUI';
 
 interface EntityAnalysisProps {
   balances: Balance[];
+  headerContent?: React.ReactNode;
 }
 
-export const EntityAnalysis: React.FC<EntityAnalysisProps> = ({ balances }) => {
+export const EntityAnalysis: React.FC<EntityAnalysisProps> = ({ balances, headerContent }) => {
   if (!Array.isArray(balances) || balances.length === 0) {
     return <div className="p-10 text-center italic opacity-40">No hay datos disponibles para esta entidad.</div>;
   }
@@ -32,14 +36,20 @@ export const EntityAnalysis: React.FC<EntityAnalysisProps> = ({ balances }) => {
   });
 
   const latest = [...balances].sort((a, b) => (b.year * 100 + b.month) - (a.year * 100 + a.month))[0];
-  const [sankeyDate, setSankeyDate] = useState(latest ? `${latest.year}-${latest.month}` : '');
+  const [analysisDate, setAnalysisDate] = useState(latest ? `${latest.year}-${latest.month}` : '');
 
-  const selectedSankeyBalance = balances.find(b => b && `${b.year}-${b.month}` === sankeyDate) || latest;
+  const analysisDateStr = analysisDate || (latest ? `${latest.year}-${latest.month}` : '');
+  const selectedSankeyBalance = balances.find(b => b && `${b.year}-${b.month}` === analysisDateStr) || latest;
 
   const currentProcessedData = sortedBalances.map((b, i) => b ? calculateMetrics(b, i > 0 ? sortedBalances[i-1] : undefined) : null).filter(Boolean) as any[];
-  const current = currentProcessedData.length > 0 ? currentProcessedData[currentProcessedData.length - 1] : null;
+  
+  const current = currentProcessedData.find(d => {
+    const [month, year] = d.periodo.split('/');
+    return `${year}-${month}` === analysisDateStr;
+  }) || (currentProcessedData.length > 0 ? currentProcessedData[currentProcessedData.length - 1] : null);
 
   if (!latest || !current) return <div className="p-10 text-center italic opacity-40">Error al procesar los datos de la entidad.</div>;
+
 
   const formatCurrency = (val: number) => {
     if (val === 0 || val === undefined) return "-";
@@ -254,10 +264,38 @@ export const EntityAnalysis: React.FC<EntityAnalysisProps> = ({ balances }) => {
   const sankeyHeight = isMobile ? "h-[450px]" : "h-[600px]";
   const sankeyNodePadding = isMobile ? 30 : 60;
 
+  const centralDeudoresData = current ? [
+    { name: 'Normal (1)', value: current.debt_sit_1 || 0, color: '#22c55e' },
+    { name: 'Riesgo Bajo (2)', value: current.debt_sit_2 || 0, color: '#eab308' },
+    { name: 'Riesgo Medio (3)', value: current.debt_sit_3 || 0, color: '#f97316' },
+    { name: 'Riesgo Alto (4)', value: current.debt_sit_4 || 0, color: '#ef4444' },
+    { name: 'Irrecuperable (5)', value: current.debt_sit_5 || 0, color: '#7f1d1d' },
+    { name: 'Garantías (11)', value: current.debt_sit_11 || 0, color: '#3b82f6' },
+  ].filter(d => d.value > 0) : [];
+
   if (!latest) return <div className="p-4 italic text-center text-retro-blue">No hay datos disponibles.</div>;
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Header Tools */}
+      <div className="flex items-center gap-4">
+        {headerContent}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase font-bold opacity-70">Fecha Analizada:</span>
+          <select 
+            value={analysisDate}
+            onChange={(e) => setAnalysisDate(e.target.value)}
+            className="bg-white border-2 border-black text-[11px] font-bold px-2 py-0.5 outline-none cursor-pointer hover:bg-gray-50 focus:ring-1 focus:ring-black"
+          >
+            {[...balances].sort((a, b) => (b.year * 100 + b.month) - (a.year * 100 + a.month)).map(b => (
+              <option key={`${b.year}-${b.month}`} value={`${b.year}-${b.month}`}>
+                {formatDateLabel(b.year, b.month)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {/* 6 Grid of Ratios */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* 1. Solvencia y Capital */}
@@ -346,6 +384,46 @@ export const EntityAnalysis: React.FC<EntityAnalysisProps> = ({ balances }) => {
         </div>
       </div>
 
+      {/* Central de Deudores (Situación) */}
+      <div className="window bg-white h-[350px]">
+        <div className="title-bar !bg-[#ef4444] !text-white flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            <span>Central de Deudores (Nivel de Endeudamiento / Mora)</span>
+          </div>
+          <span className="text-[10px] font-mono opacity-80">VALORES EN PESOS</span>
+        </div>
+        <div className="p-4 h-full pb-12">
+          {centralDeudoresData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie 
+                  data={centralDeudoresData} 
+                  dataKey="value" 
+                  nameKey="name" 
+                  cx="50%" 
+                  cy="50%" 
+                  innerRadius={typeof window !== 'undefined' && window.innerWidth < 768 ? 50 : 80} 
+                  outerRadius={typeof window !== 'undefined' && window.innerWidth < 768 ? 80 : 120} 
+                  labelLine={false}
+                  label={({name, percent}) => `${name} (${(percent * 100).toFixed(1)}%)`}
+                >
+                  {centralDeudoresData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: number, name: string) => [`$ ${(value / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 })} M`, name]} />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full text-retro-blue italic">
+               No hay datos de deudores disponibles para este periodo.
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Sankey Waterfall / Cashflow */}
       <div className="window bg-white shadow-button">
         <div className="title-bar !bg-retro-green !text-black flex items-center justify-between">
@@ -354,17 +432,6 @@ export const EntityAnalysis: React.FC<EntityAnalysisProps> = ({ balances }) => {
               <TrendingUp className="w-4 h-4" />
               <span>Flujo de Resultados (Sankey)</span>
             </div>
-            <select 
-              value={sankeyDate}
-              onChange={(e) => setSankeyDate(e.target.value)}
-              className="bg-white border-2 border-black text-[11px] font-bold px-2 py-0.5 outline-none cursor-pointer hover:bg-gray-50 focus:ring-1 focus:ring-black"
-            >
-              {[...balances].sort((a, b) => (b.year * 100 + b.month) - (a.year * 100 + a.month)).map(b => (
-                <option key={`${b.year}-${b.month}`} value={`${b.year}-${b.month}`}>
-                  {formatDateLabel(b.year, b.month)}
-                </option>
-              ))}
-            </select>
           </div>
           <span className="text-[10px] font-mono opacity-60">VALORES EN PESOS</span>
         </div>
