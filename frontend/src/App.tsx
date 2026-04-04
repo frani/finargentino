@@ -11,6 +11,7 @@ import { Home } from './components/Home';
 import { AgroView } from './components/AgroView';
 import { WallOfFame } from './components/WallOfFame';
 import { StartMenu } from './components/StartMenu';
+import { BigMacView } from './components/BigMacView';
 import { useMCPContext } from './contexts/MCPContext';
 
 function App() {
@@ -167,6 +168,19 @@ function App() {
               className="bg-pastel-green h-full"
             >
               <AgroView />
+            </RouteWindow>
+          } />
+
+          <Route path="/bigmac" element={
+            <RouteWindow
+              title={
+                <div className="flex items-center gap-2">
+                  <span>Índice Big Mac</span>
+                </div>
+              }
+              className="bg-pastel-yellow h-full"
+            >
+              <BigMacView />
             </RouteWindow>
           } />
 

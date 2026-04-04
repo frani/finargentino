@@ -320,6 +320,33 @@ func (s *Server) handleToolsCall(ctx context.Context, params json.RawMessage) (i
 		}, nil
 	}
 
+	if p.Name == "sync_big_mac" {
+		go s.syncBigMac()
+		return map[string]interface{}{
+			"content": []map[string]interface{}{
+				{"type": "text", "text": "Sincronización del Índice Big Mac iniciada."},
+			},
+		}, nil
+	}
+
+	if p.Name == "get_big_mac" {
+		var args struct {
+			IsoA3 string `json:"iso_a3"`
+		}
+		json.Unmarshal(p.Arguments, &args)
+		
+		history, err := s.Service.GetBigMacHistory(ctx, args.IsoA3)
+		if err != nil {
+			return nil, err
+		}
+		histJSON, _ := json.Marshal(history)
+		return map[string]interface{}{
+			"content": []map[string]interface{}{
+				{"type": "text", "text": string(histJSON)},
+			},
+		}, nil
+	}
+
 	return nil, fmt.Errorf("tool not found")
 
 }
@@ -334,7 +361,10 @@ func (s *Server) SyncData() {
 	// 2. Sync FX Rates
 	s.syncFXRates()
 
-	// 3. Sync BCRA Entities
+	// 3. Sync Big Mac Index
+	s.syncBigMac()
+
+	// 4. Sync BCRA Entities
 	ctx := context.Background()
 	
 	// Fetch updated_at map from DB to skip recently updated ones
@@ -554,5 +584,36 @@ func (s *Server) seedAgroHistory() {
 		}
 	}
 	fmt.Println("[SeedAgro] Seeding completed.")
+}
+
+func (s *Server) syncBigMac() {
+	logPrefix := "[SyncBigMac]"
+	fmt.Println(logPrefix, "Fetching Big Mac Index from Economist GitHub...")
+
+	prices, err := scraper.FetchBigMacIndex()
+	if err != nil {
+		fmt.Println(logPrefix, "Fetch error:", err)
+		return
+	}
+
+	ctx := context.Background()
+	var rows []db.BigMacIndexRow
+	for _, p := range prices {
+		rows = append(rows, db.BigMacIndexRow{
+			Date:        p.Date,
+			IsoA3:       p.IsoA3,
+			Name:        p.Name,
+			LocalPrice:  p.LocalPrice,
+			DollarEx:    p.DollarEx,
+			DollarPrice: p.DollarPrice,
+			USDRaw:      p.USDRaw,
+		})
+	}
+
+	if err := s.Service.SaveBigMacIndex(ctx, rows); err != nil {
+		fmt.Println(logPrefix, "Save error:", err)
+		return
+	}
+	fmt.Println(logPrefix, "Saved", len(rows), "Big Mac index rows.")
 }
 

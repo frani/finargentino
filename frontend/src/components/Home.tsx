@@ -5,9 +5,20 @@ import { Link } from 'react-router-dom';
 
 export const Home: React.FC = () => {
   return (
-    <div className="h-full flex flex-col gap-4 animate-in fade-in duration-500">
+    <div className="h-full flex flex-col gap-4 animate-in fade-in duration-500 relative">
+
+      <div className="absolute top-[0px] left-[5px] md:top-[5px] md:left-[10px] pointer-events-none flex flex-col items-start drop-shadow-sm z]">
+        <span className="font-['Comic_Sans_MS',cursive,sans-serif] text-base md:text-xl font-bold text-pink-600 rotate-[-12deg] ml-[100px] md:ml-[120px] mt-[70px] md:mt-[80px]">
+          Mira mas <br/> en Inicio
+        </span>
+        <svg width="100" height="100" viewBox="0 0 100 100" className="ml-[20px] md:ml-[40px] mt-[-65px] md:mt-[-75px] overflow-visible text-pink-600 drop-shadow-[2px_2px_0px_rgba(0,0,0,0.3)]">
+          <path d="M 90 90 C 60 90, 20 80, 10 10" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
+          <path d="M 0 35 L 10 10 L 30 25" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+
       <Window title="Argentino - Bienvenido" className="bg-white">
-        <div className="p-4 md:p-8 flex flex-col items-center text-center gap-6">
+        <div className="p-4 md:p-8 flex flex-col items-center text-center gap-6 relative">
           <div className="w-24 h-24 border-4 border-black shadow-button flex flex-col mb-2 rotate-3 hover:rotate-0 transition-transform overflow-hidden relative">
             <div className="h-1/3 bg-[#74ACDF]"></div>
             <div className="h-1/3 bg-white"></div>
@@ -57,6 +68,11 @@ export const Home: React.FC = () => {
             <Link to="/dolar">
               <RetroButton className="px-8 py-3 text-lg font-black bg-pastel-green text-black">
                 VER DÓLAR
+              </RetroButton>
+            </Link>
+            <Link to="/bigmac">
+              <RetroButton className="px-8 py-3 text-lg font-black bg-pastel-yellow text-black">
+                ÍNDICE BIG MAC
               </RetroButton>
             </Link>
           </div>

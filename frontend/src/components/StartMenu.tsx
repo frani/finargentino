@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutGrid, Globe, Landmark, DollarSign, Sprout, ChevronRight, Users, Trophy } from 'lucide-react';
+import { LayoutGrid, Globe, Landmark, DollarSign, Sprout, ChevronRight, Users, Trophy, Menu } from 'lucide-react';
 import { useMCPContext } from '../contexts/MCPContext';
 
 interface StartMenuProps {
@@ -13,6 +13,7 @@ const navLinks = [
   { to: '/entidades', icon: Landmark, label: 'Bancos' },
   { to: '/dolar', icon: DollarSign, label: 'Cotización Dólar' },
   { to: '/agro', icon: Sprout, label: 'Agro' },
+  { to: '/bigmac', icon: Menu, label: 'Índice Big Mac' },
   { to: '/wall-of-fame', icon: Trophy, label: 'Wall of Fame' },
 ];
 

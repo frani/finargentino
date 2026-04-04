@@ -79,3 +79,18 @@ CREATE TABLE IF NOT EXISTS debtor_summaries (
 -- Index for period queries
 CREATE INDEX IF NOT EXISTS idx_debtor_summaries_period_date ON debtor_summaries(period_date);
 
+-- Big Mac Index data
+CREATE TABLE IF NOT EXISTS big_mac_index (
+    id SERIAL PRIMARY KEY,
+    date DATE NOT NULL,
+    iso_a3 VARCHAR(3) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    local_price NUMERIC(15, 4) NOT NULL,
+    dollar_ex NUMERIC(15, 4) NOT NULL,
+    dollar_price NUMERIC(15, 4) NOT NULL,
+    usd_raw NUMERIC(15, 4) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(date, iso_a3)
+);
+
+CREATE INDEX IF NOT EXISTS idx_big_mac_index_date ON big_mac_index(date DESC);
