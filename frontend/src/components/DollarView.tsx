@@ -149,12 +149,6 @@ export function DollarView() {
       {/* Header */}
       <div className="flex items-center justify-between shrink-0 flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <DollarSign className="w-5 h-5 text-retro-blue" />
-          <span className="text-xs font-bold uppercase tracking-widest opacity-60">
-            Cotizaciones USD
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
           {lastFetch && (
             <span className="flex items-center gap-1 text-[10px] opacity-50">
               <Clock className="w-3 h-3" />
